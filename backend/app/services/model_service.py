@@ -8,7 +8,7 @@ from app.config import MODEL_METADATA_PATH, MODEL_PATH
 
 NOTEBOOK_COMPARISON = [
     {"model": "XGBoost", "accuracy": 79.3, "macro_precision": 50.11, "balanced_accuracy": 47.67, "macro_f1": 48.48},
-    {"model": "Random Forest", "accuracy": 76.2, "macro_precision": 47.37, "balanced_accuracy": 48.68, "macro_f1": 47.94},
+    {"model": "Random Forest", "accuracy": 74.6, "macro_precision": 45.69, "balanced_accuracy": 45.83, "macro_f1": 45.76},
     {"model": "KNN", "accuracy": 72.9, "macro_precision": 44.40, "balanced_accuracy": 44.75, "macro_f1": 44.57},
     {"model": "Logistic Regression", "accuracy": 63.5, "macro_precision": 45.76, "balanced_accuracy": 45.19, "macro_f1": 43.12},
     {"model": "Decision Tree", "accuracy": 69.9, "macro_precision": 42.73, "balanced_accuracy": 43.49, "macro_f1": 43.04},
@@ -50,7 +50,10 @@ def comparison() -> dict[str, Any]:
             ),
         }
     return {
-        "source": "Saved notebook holdout comparison; metric values are percentages.",
+        "source": (
+            "Saved notebook holdout comparison for reference models; the Random "
+            "Forest uses the reduced-input evaluation. Metric values are percentages."
+        ),
         "split": "80/20 stratified train/test split, random_state=42.",
         "items": NOTEBOOK_COMPARISON,
         "deployed_experiment": deployed_experiment,

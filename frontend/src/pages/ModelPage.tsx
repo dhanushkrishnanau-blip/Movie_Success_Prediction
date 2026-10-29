@@ -33,12 +33,12 @@ export function ModelPage() {
     .filter((model) => model.model !== "Random Forest")
     .concat(comparison.deployed_experiment ?? rf ?? []);
   const flopRecall = report?.report.Flop ? report.report.Flop.recall * 100 : null;
-  const chartData = [...comparison.items].sort((a, b) => b.macro_f1 - a.macro_f1);
+  const chartData = [...displayedModels].sort((a, b) => b.macro_f1 - a.macro_f1);
   return <>
     <PageHeader eyebrow="EVALUATION WORKSPACE / 05" title="Read the model honestly." description="The deployed Random Forest is the selected model. Other algorithms are shown for reference using the saved notebook results." />
     {error && <div className="notice notice-warn"><p>Some model details are unavailable: {error}</p></div>}
     <div className="metric-ribbon"><div><span>{comparison.deployed_experiment ? "DEPLOYED RF ACCURACY" : "NOTEBOOK RF ACCURACY"}</span><b>{selectedModel?.accuracy.toFixed(2)}%</b></div><div><span>MACRO F1</span><b>{selectedModel?.macro_f1.toFixed(2)}%</b></div><div><span>BALANCED ACCURACY</span><b>{selectedModel?.balanced_accuracy.toFixed(2)}%</b></div><div><span>FLOP CLASS RECALL</span><b className="warning-text">{flopRecall === null ? "—" : `${flopRecall.toFixed(1)}%`}</b></div></div>
-    <Panel title="Algorithm comparison" eyebrow="SAVED NOTEBOOK HOLDOUT RESULTS" action={<span className="table-unit">METRICS IN %</span>}>
+    <Panel title="Algorithm comparison" eyebrow="NOTEBOOK REFERENCES + DEPLOYED RF" action={<span className="table-unit">METRICS IN %</span>}>
       <div className="table-scroll"><table><thead><tr><th>Algorithm</th><th>Accuracy</th><th>Macro precision</th><th>Balanced accuracy</th><th>Macro F1</th></tr></thead><tbody>{displayedModels.map((item) => {
         const deployed = item.model === "Random Forest · reduced inputs";
         return <tr key={item.model} className={deployed ? "highlight-row" : ""}><td>{deployed ? "Random Forest" : item.model}{deployed && <span className="selected-tag">DEPLOYED</span>}</td><td>{item.accuracy.toFixed(deployed ? 2 : 1)}</td><td>{item.macro_precision.toFixed(2)}</td><td>{item.balanced_accuracy.toFixed(2)}</td><td>{item.macro_f1.toFixed(2)}</td></tr>;

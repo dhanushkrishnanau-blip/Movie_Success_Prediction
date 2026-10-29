@@ -98,6 +98,7 @@ describe("CineScope overview", () => {
     expect(await screen.findByText("DEPLOYED RF ACCURACY")).toBeInTheDocument();
     expect(screen.getByText("74.60%")).toBeInTheDocument();
     expect(screen.getByText("DEPLOYED")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Random Forest DEPLOYED 74\.60 45\.69 45\.83 45\.76/ })).toBeInTheDocument();
     expect(screen.queryByText("Previous deployed model (20 fields)")).not.toBeInTheDocument();
   });
 

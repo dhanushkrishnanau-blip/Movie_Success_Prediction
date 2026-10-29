@@ -74,7 +74,10 @@ def test_models_comparison_is_not_mocked():
     random_forest = next(
         item for item in comparison["items"] if item["model"] == "Random Forest"
     )
-    assert random_forest["accuracy"] == 76.2
+    assert random_forest["accuracy"] == 74.6
+    assert random_forest["macro_precision"] == 45.69
+    assert random_forest["balanced_accuracy"] == 45.83
+    assert random_forest["macro_f1"] == 45.76
     assert comparison["source"].startswith("Saved notebook")
     assert all(
         "HistGradientBoosting" not in item["model"] for item in comparison["items"]

@@ -93,8 +93,8 @@ The artifact files are produced locally and are not committed by default; run `p
 ## Known limitations
 
 - The cleaned dataset has 4,998 rows, including only 41 Flops; the saved notebook holdout has 8 Flop examples.
-- The saved notebook comparison reports Random Forest at 76.2% accuracy, 48.68% balanced accuracy, and 47.94% macro F1. High accuracy does not imply useful minority-class detection.
-- The reduced-input model's performance is regenerated when `python -m app.export_model` is run. The Model Lab compares it with the previous deployed model on the same stratified holdout; prioritize macro F1, balanced accuracy, and Flop recall over accuracy alone. The holdout has only 8 Flop examples, so Flop recall is especially uncertain. Random splitting can also place names in both train and test and does not measure performance on entirely unseen people.
+- The notebook and site use the same reduced-input Random Forest holdout metrics: 74.6% accuracy, 45.69% macro precision, 45.83% balanced accuracy, and 45.76% macro F1. The earlier full-feature notebook Random Forest scored 76.2% accuracy, but used different inputs and is not the deployed model. High accuracy does not imply useful minority-class detection.
+- The reduced-input model's performance is regenerated when `python -m app.export_model` is run. Prioritize macro F1, balanced accuracy, and Flop recall over accuracy alone. The holdout has only 8 Flop examples, so Flop recall is especially uncertain. Random splitting can also place names in both train and test and does not measure performance on entirely unseen people.
 - The model predicts a category derived from IMDb score, not revenue, profitability, or audience preference.
 - Some included input fields may not be available before release.
 - The source CSV does not include poster images or plot synopses; the UI uses typographic tiles and only displays source metadata.
