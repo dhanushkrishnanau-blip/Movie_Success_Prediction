@@ -1,0 +1,365 @@
+.app-shell[data-theme="diary"] {
+  --bg: #10191c;
+  --panel: #192529;
+  --panel-soft: #202f33;
+  --line: #304044;
+  --muted: #a4b4b1;
+  --dim: #788c89;
+  --ivory: #eff5ed;
+  --amber: #c4ee83;
+  --green: #63d69a;
+  --red: #ef8175;
+  min-height: 100vh;
+  color: var(--ivory);
+  background: var(--bg);
+}
+
+.app-shell[data-theme="diary"] .sidebar {
+  border-color: #293a3e;
+  background: #142125;
+}
+
+.app-shell[data-theme="diary"] .brand {
+  letter-spacing: .12em;
+}
+
+.app-shell[data-theme="diary"] .brand-light {
+  color: #b7c8c0;
+}
+
+.app-shell[data-theme="diary"] .brand-mark {
+  border-color: #536548;
+  border-radius: 9px;
+  background: #1d302d;
+}
+
+.app-shell[data-theme="diary"] .nav-caption,
+.app-shell[data-theme="diary"] .eyebrow {
+  color: #a5c67f;
+}
+
+.app-shell[data-theme="diary"] .nav-link {
+  border-radius: 7px;
+  color: #aab9b5;
+}
+
+.app-shell[data-theme="diary"] .nav-link:hover {
+  color: var(--ivory);
+  background: #1c2d31;
+}
+
+.app-shell[data-theme="diary"] .nav-link.active {
+  border-color: #354d43;
+  color: #e8f4e3;
+  background: #233a35;
+}
+
+.app-shell[data-theme="diary"] .nav-link.active svg,
+.app-shell[data-theme="diary"] .icon-button:hover:not(:disabled) {
+  color: var(--amber);
+}
+
+.app-shell[data-theme="diary"] .dataset-badge {
+  border-color: #293a3e;
+  color: #b8c5c0;
+}
+
+.app-shell[data-theme="diary"] .main-shell {
+  background: var(--bg);
+}
+
+.app-shell[data-theme="diary"] .topbar {
+  border-color: #293a3e;
+  background: #111c20ed;
+}
+
+.app-shell[data-theme="diary"] .topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-shell[data-theme="diary"] .breadcrumb {
+  color: #91a5a0;
+}
+
+.app-shell[data-theme="diary"] .theme-toggle {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #3c5148;
+  border-radius: 6px;
+  color: #cce2bd;
+  background: #1a2a2a;
+  font-size: 10px;
+}
+
+.app-shell[data-theme="diary"] .theme-toggle:hover {
+  border-color: #83a76d;
+  background: #233832;
+}
+
+.app-shell[data-theme="diary"] .page-header h1,
+.app-shell[data-theme="diary"] .hero-copy h2,
+.app-shell[data-theme="diary"] .panel-heading h2 {
+  color: #f0f3e9;
+}
+
+.app-shell[data-theme="diary"] .page-header p,
+.app-shell[data-theme="diary"] .body-copy,
+.app-shell[data-theme="diary"] .hero-copy p {
+  color: #a7b6af;
+}
+
+.app-shell[data-theme="diary"] .hero-panel {
+  border-color: #385047;
+  border-radius: 10px;
+  background: radial-gradient(ellipse at 75% 35%, #29473a 0%, #1a302f 43%, #17272b 100%);
+}
+
+.app-shell[data-theme="diary"] .hero-art:before,
+.app-shell[data-theme="diary"] .orbit {
+  border-color: #7f9f714f;
+}
+
+.app-shell[data-theme="diary"] .hero-art:after {
+  border-color: #9db98a38;
+}
+
+.app-shell[data-theme="diary"] .hero-reel {
+  border-color: #a7cc7c;
+  background: #1b302de8;
+}
+
+.app-shell[data-theme="diary"] .hero-foot {
+  border-color: #42604c;
+  color: #a5b9aa;
+}
+
+.app-shell[data-theme="diary"] .hero-foot b,
+.app-shell[data-theme="diary"] .hero-index b {
+  color: #deedc9;
+}
+
+.app-shell[data-theme="diary"] .stat-card,
+.app-shell[data-theme="diary"] .panel,
+.app-shell[data-theme="diary"] .dataset-overview-strip,
+.app-shell[data-theme="diary"] .metric-ribbon {
+  border-color: #2b3d41;
+  border-radius: 8px;
+  background: #192529;
+  box-shadow: 0 5px 16px #08101230;
+}
+
+.app-shell[data-theme="diary"] .stat-top,
+.app-shell[data-theme="diary"] .legend-row,
+.app-shell[data-theme="diary"] .metric-lines div,
+.app-shell[data-theme="diary"] .fine-print {
+  color: #a0b0aa;
+}
+
+.app-shell[data-theme="diary"] .stat-card strong,
+.app-shell[data-theme="diary"] .metric-lines b,
+.app-shell[data-theme="diary"] .metric-ribbon b,
+.app-shell[data-theme="diary"] .legend-row b {
+  color: #eff4e8;
+}
+
+.app-shell[data-theme="diary"] .model-seal,
+.app-shell[data-theme="diary"] .workflow-icon {
+  border-color: #57754d;
+  border-radius: 7px;
+}
+
+.app-shell[data-theme="diary"] .notice {
+  border-color: #596044;
+  border-radius: 7px;
+  color: #e0d49e;
+  background: #292b22;
+}
+
+.app-shell[data-theme="diary"] .notice-warn {
+  border-color: #5b583b;
+  color: #e3d798;
+  background: #29291f;
+}
+
+.app-shell[data-theme="diary"] .notice-error {
+  border-color: #68453e;
+  color: #f0aa9a;
+  background: #2d211f;
+}
+
+.app-shell[data-theme="diary"] .button,
+.app-shell[data-theme="diary"] .icon-button {
+  border-radius: 6px;
+}
+
+.app-shell[data-theme="diary"] .button-primary {
+  color: #18251c;
+  background: #c4ee83;
+}
+
+.app-shell[data-theme="diary"] .button-primary:hover {
+  background: #d3f59c;
+}
+
+.app-shell[data-theme="diary"] .button-outline,
+.app-shell[data-theme="diary"] .button-quiet,
+.app-shell[data-theme="diary"] .icon-button {
+  border-color: #3a4d4d;
+  color: #d5e0d8;
+}
+
+.app-shell[data-theme="diary"] .button-outline:hover,
+.app-shell[data-theme="diary"] .button-quiet:hover,
+.app-shell[data-theme="diary"] .icon-button:hover:not(:disabled) {
+  border-color: #77966a;
+  background: #243633;
+}
+
+.app-shell[data-theme="diary"] .text-link,
+.app-shell[data-theme="diary"] .panel-link {
+  color: #c5e99a;
+}
+
+.app-shell[data-theme="diary"] .search-field,
+.app-shell[data-theme="diary"] .select-field select,
+.app-shell[data-theme="diary"] .movie-controls select,
+.app-shell[data-theme="diary"] .movie-controls input,
+.app-shell[data-theme="diary"] .form-field input,
+.app-shell[data-theme="diary"] .filter-grid input {
+  border-color: #3a4b4d;
+  border-radius: 5px;
+  color: #eff4ec;
+  background: #121e21;
+}
+
+.app-shell[data-theme="diary"] .column-detail,
+.app-shell[data-theme="diary"] .column-toggles {
+  border-color: #34494a;
+  border-radius: 7px;
+  background: #1a2a2c;
+}
+
+.app-shell[data-theme="diary"] th {
+  color: #9eafa7;
+  background: #1c2a2d;
+}
+
+.app-shell[data-theme="diary"] td {
+  border-color: #2b3b3e;
+  color: #d0dad2;
+}
+
+.app-shell[data-theme="diary"] tbody tr:hover,
+.app-shell[data-theme="diary"] .highlight-row {
+  background: #243732;
+}
+
+.app-shell[data-theme="diary"] .highlight-row td:first-child {
+  color: #d3efaa;
+}
+
+.app-shell[data-theme="diary"] .movie-card {
+  border-color: #344649;
+  border-radius: 8px;
+  background: #192529;
+}
+
+.app-shell[data-theme="diary"] .movie-card:hover {
+  border-color: #90b277;
+}
+
+.app-shell[data-theme="diary"] .movie-poster {
+  background: radial-gradient(ellipse at 70% 20%, #44634d, #263d3d 56%, #18282d 100%);
+}
+
+.app-shell[data-theme="diary"] .movie-card:nth-child(4n + 2) .movie-poster {
+  background: radial-gradient(ellipse at 25% 35%, #45605b, #293d3d 56%, #18282d 100%);
+}
+
+.app-shell[data-theme="diary"] .movie-card:nth-child(4n + 3) .movie-poster {
+  background: radial-gradient(ellipse at 68% 30%, #65563e, #3c3930 55%, #1d2b2c 100%);
+}
+
+.app-shell[data-theme="diary"] .movie-card:nth-child(4n + 4) .movie-poster {
+  background: radial-gradient(ellipse at 60% 25%, #415267, #29383e 55%, #18282d 100%);
+}
+
+.app-shell[data-theme="diary"] .poster-title,
+.app-shell[data-theme="diary"] .movie-poster strong {
+  color: #eff4e8;
+}
+
+.app-shell[data-theme="diary"] .poster-rule {
+  background: #c4ee83;
+}
+
+.app-shell[data-theme="diary"] .movie-dialog {
+  border-color: #3a504b;
+  border-radius: 10px;
+  background: #192529;
+}
+
+.app-shell[data-theme="diary"] .workflow-stage,
+.app-shell[data-theme="diary"] .boundary-list div,
+.app-shell[data-theme="diary"] .schema-note {
+  border-color: #2e4142;
+  border-radius: 6px;
+  background: #172326;
+}
+
+.app-shell[data-theme="diary"] .workflow-stage b,
+.app-shell[data-theme="diary"] .movie-card-meta b {
+  color: #e4eee4;
+}
+
+.app-shell[data-theme="original"] .theme-toggle {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #46463e;
+  color: #d0cec3;
+  background: #1b1c19;
+  font-size: 10px;
+}
+
+.app-shell[data-theme="original"] .theme-toggle:hover {
+  border-color: #77715e;
+  background: #25251f;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+@media (max-width: 760px) {
+  .app-shell[data-theme="diary"] .topbar-actions {
+    gap: 10px;
+  }
+
+  .app-shell[data-theme="diary"] .theme-toggle {
+    min-height: 28px;
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 9px;
+  }
+}
+
+@media (max-width: 430px) {
+  .app-shell[data-theme="diary"] .topbar-actions {
+    gap: 7px;
+  }
+
+  .app-shell[data-theme="diary"] .connection-state {
+    gap: 4px;
+    letter-spacing: 0;
+  }
+}

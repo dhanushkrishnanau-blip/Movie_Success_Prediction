@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/coverage/
+backend/artifacts/*.joblib
+backend/artifacts/model_metadata.json
+
+# Local configuration and runtime
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+*.cache
+.DS_Store
+Thumbs.db
