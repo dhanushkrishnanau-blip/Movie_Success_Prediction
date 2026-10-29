@@ -10,11 +10,7 @@ export function ModelPage() {
     baseline_source: string;
     metric_change_percentage_points: Record<string, number>;
     flop_recall_percent: number;
-  } | null; cross_validation?: {
-    model: string; method: string; accuracy_mean_percent: number; accuracy_std_percent: number;
-    balanced_accuracy_mean_percent: number; balanced_accuracy_std_percent: number;
-    macro_f1_mean_percent: number; macro_f1_std_percent: number;
-  } } | null>(null);
+  } | null } | null>(null);
   const [matrix, setMatrix] = useState<ConfusionMatrix | null>(null);
   const [report, setReport] = useState<ModelReport | null>(null);
   const [importance, setImportance] = useState<Array<{ feature: string; importance: number }> | null>(null);
@@ -48,7 +44,6 @@ export function ModelPage() {
         return <tr key={item.model} className={deployed ? "highlight-row" : ""}><td>{deployed ? "Random Forest" : item.model}{deployed && <span className="selected-tag">DEPLOYED</span>}</td><td>{item.accuracy.toFixed(deployed ? 2 : 1)}</td><td>{item.macro_precision.toFixed(2)}</td><td>{item.balanced_accuracy.toFixed(2)}</td><td>{item.macro_f1.toFixed(2)}</td></tr>;
       })}</tbody></table></div>
       <p className="fine-print">{comparison.source} {comparison.split} The deployed Random Forest uses the reduced 10-field input set; other algorithms retain their saved notebook results.</p>
-      {comparison.cross_validation && <p className="fine-print">Notebook cross-validation ({comparison.cross_validation.model}; {comparison.cross_validation.method}): accuracy {comparison.cross_validation.accuracy_mean_percent.toFixed(2)} ± {comparison.cross_validation.accuracy_std_percent.toFixed(2)}%, balanced accuracy {comparison.cross_validation.balanced_accuracy_mean_percent.toFixed(2)} ± {comparison.cross_validation.balanced_accuracy_std_percent.toFixed(2)}%, macro F1 {comparison.cross_validation.macro_f1_mean_percent.toFixed(2)} ± {comparison.cross_validation.macro_f1_std_percent.toFixed(2)}%.</p>}
     </Panel>
     <div className="analytics-grid">
       <Panel title="Macro F1 by model" eyebrow="PER-CLASS BALANCE"><div className="chart-wrap chart-large"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} layout="vertical" margin={{ left: 26, right: 14, top: 6, bottom: 0 }}><CartesianGrid stroke="#2b2c28" horizontal={false} /><XAxis type="number" domain={[0, 60]} axisLine={false} tickLine={false} tick={{ fill: "#777970", fontSize: 10 }} /><YAxis type="category" dataKey="model" width={160} axisLine={false} tickLine={false} tick={{ fill: "#a7a69d", fontSize: 10 }} /><Tooltip contentStyle={{ background: "#1d1e1a", border: "1px solid #3a3b34" }} /><Bar dataKey="macro_f1" fill="#77866c" radius={[0, 3, 3, 0]} /></BarChart></ResponsiveContainer></div></Panel>

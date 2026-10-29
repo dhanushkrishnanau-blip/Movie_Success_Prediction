@@ -76,6 +76,10 @@ def test_models_comparison_is_not_mocked():
     )
     assert random_forest["accuracy"] == 76.2
     assert comparison["source"].startswith("Saved notebook")
+    assert all(
+        "HistGradientBoosting" not in item["model"] for item in comparison["items"]
+    )
+    assert "cross_validation" not in comparison
 
 
 def test_model_artifact_evaluation_and_prediction():

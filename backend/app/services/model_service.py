@@ -7,10 +7,7 @@ import joblib
 from app.config import MODEL_METADATA_PATH, MODEL_PATH
 
 NOTEBOOK_COMPARISON = [
-    {"model": "Oversampled HistGradientBoosting", "accuracy": 78.0, "macro_precision": 48.65, "balanced_accuracy": 49.66, "macro_f1": 49.12},
     {"model": "XGBoost", "accuracy": 79.3, "macro_precision": 50.11, "balanced_accuracy": 47.67, "macro_f1": 48.48},
-    {"model": "HistGradientBoosting", "accuracy": 78.9, "macro_precision": 49.56, "balanced_accuracy": 47.85, "macro_f1": 48.46},
-    {"model": "Balanced HistGradientBoosting", "accuracy": 76.4, "macro_precision": 47.54, "balanced_accuracy": 48.99, "macro_f1": 48.16},
     {"model": "Random Forest", "accuracy": 76.2, "macro_precision": 47.37, "balanced_accuracy": 48.68, "macro_f1": 47.94},
     {"model": "KNN", "accuracy": 72.9, "macro_precision": 44.40, "balanced_accuracy": 44.75, "macro_f1": 44.57},
     {"model": "Logistic Regression", "accuracy": 63.5, "macro_precision": 45.76, "balanced_accuracy": 45.19, "macro_f1": 43.12},
@@ -57,16 +54,6 @@ def comparison() -> dict[str, Any]:
         "split": "80/20 stratified train/test split, random_state=42.",
         "items": NOTEBOOK_COMPARISON,
         "deployed_experiment": deployed_experiment,
-        "cross_validation": {
-            "model": "HistGradientBoosting",
-            "method": "5-fold stratified cross-validation on training data only",
-            "accuracy_mean_percent": 79.34,
-            "accuracy_std_percent": 0.91,
-            "balanced_accuracy_mean_percent": 48.47,
-            "balanced_accuracy_std_percent": 0.53,
-            "macro_f1_mean_percent": 49.04,
-            "macro_f1_std_percent": 0.57,
-        },
     }
 
 
