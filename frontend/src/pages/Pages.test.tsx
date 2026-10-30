@@ -7,6 +7,7 @@ import { DatasetPage } from "./DatasetPage";
 import { ModelPage } from "./ModelPage";
 import { OverviewPage } from "./OverviewPage";
 import { PredictPage } from "./PredictPage";
+import { ResearcherPage } from "./ResearcherPage";
 
 vi.mock("../services/api", () => ({
   api: {
@@ -42,6 +43,42 @@ vi.mock("../services/api", () => ({
       source: "Test holdout",
     }),
     featureImportance: vi.fn().mockResolvedValue({ available: true, items: [] }),
+    explainPrediction: vi.fn().mockResolvedValue({
+      prediction: {
+        predicted_category: "Average",
+        model_name: "Random Forest · reduced inputs",
+        probabilities: { Flop: 0.1, Average: 0.6, Hit: 0.3 },
+        note: "IMDb-score category, not revenue.",
+      },
+      feature_effects: [{
+        feature: "genres",
+        input_value: "Drama",
+        reference_value: "Comedy",
+        predicted_probability_change_percentage_points: 5.2,
+      }],
+      historical_comparison: {
+        available: true,
+        matched_movies: 20,
+        criteria: ["shares at least one supplied genre"],
+        mean_imdb_score: 6.1,
+        median_imdb_score: 6.2,
+        category_percentages: { Flop: 2, Average: 38, Hit: 60 },
+      },
+      feature_availability: [{
+        feature: "budget",
+        status: "review",
+        note: "Budget can be unavailable before release.",
+      }],
+      explanation_method: "This local sensitivity test is not causal.",
+      gemini_explanation: "The model predicts Average for this example.",
+      gemini_notice: null,
+    }),
+    researcherChat: vi.fn().mockImplementation(async (mode: "general" | "dataset") => ({
+      mode,
+      answer: mode === "general" ? "A sample movie answer." : "These are historical dataset results.",
+      evidence: mode === "dataset" ? { operation: "genre_performance", supported: true } : null,
+      notice: mode === "general" ? "General movie information is not live-verified." : null,
+    })),
     schema: vi.fn().mockResolvedValue({
       columns: [
         { name: "movie_title", dtype: "object", missing: 0, missing_percent: 0, unique: 1 },
@@ -79,6 +116,7 @@ describe("CineScope overview", () => {
   it("renders navigation", () => {
     render(<MemoryRouter><App /></MemoryRouter>);
     expect(screen.getByText("Dataset")).toBeInTheDocument();
+    expect(screen.getByText("Researcher")).toBeInTheDocument();
   });
 
   it("can switch to the original look and back", async () => {
@@ -131,5 +169,50 @@ describe("CineScope overview", () => {
         document.querySelector('#suggestions-director_name option[value="Christopher Nolan"]'),
       ).not.toBeNull();
     });
+  });
+
+  it("shows trained prediction and separate evidence in the Researcher explainer", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><ResearcherPage /></MemoryRouter>);
+    await user.click(screen.getByRole("button", { name: /Predict and explain/ }));
+    expect(await screen.findAllByText("Average")).not.toHaveLength(0);
+    expect(screen.getByText("The model predicts Average for this example.")).toBeInTheDocument();
+    expect(screen.getByText(/20 matching scored movies/)).toBeInTheDocument();
+    expect(screen.getByText(/availability needs review/i)).toBeInTheDocument();
+  });
+
+  it("suggests matching names while typing in the Researcher explainer", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><ResearcherPage /></MemoryRouter>);
+    await user.type(screen.getByLabelText(/Director/), "nol");
+    await waitFor(() => {
+      expect(
+        document.querySelector('#suggestions-director_name option[value="Christopher Nolan"]'),
+      ).not.toBeNull();
+    });
+  });
+
+  it("supports general chat and displays a clearable session conversation", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><ResearcherPage /></MemoryRouter>);
+    await user.click(screen.getByRole("tab", { name: "AI Movie Research Assistant" }));
+    await user.type(screen.getByLabelText("Your question"), "Suggest a mystery movie");
+    await user.click(screen.getByRole("button", { name: /Send/ }));
+    expect(await screen.findByText("A sample movie answer.")).toBeInTheDocument();
+    expect(screen.getByText("General movie information is not live-verified.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Clear conversation/ }));
+    expect(screen.queryByText("A sample movie answer.")).not.toBeInTheDocument();
+  });
+
+  it("shows Python evidence in Dataset Researcher chat", async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter><ResearcherPage /></MemoryRouter>);
+    await user.click(screen.getByRole("tab", { name: "AI Movie Research Assistant" }));
+    await user.click(screen.getByRole("button", { name: "Dataset Researcher" }));
+    await user.type(screen.getByLabelText("Your question"), "Which genres score highest?");
+    await user.click(screen.getByRole("button", { name: /Send/ }));
+    expect(await screen.findByText("These are historical dataset results.")).toBeInTheDocument();
+    await user.click(screen.getByText("Show Python-calculated evidence"));
+    expect(screen.getByText(/genre_performance/)).toBeInTheDocument();
   });
 });

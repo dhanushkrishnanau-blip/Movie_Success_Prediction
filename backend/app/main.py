@@ -6,8 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app.config import DATASET_PATH
-from app.schemas import PredictionInput, PredictionResponse
-from app.services import analytics_service, dataset_service, model_service
+from app.schemas import PredictionInput, PredictionResponse, ResearchChatRequest
+from app.services import (
+    analytics_service,
+    dataset_service,
+    gemini_service,
+    model_service,
+    researcher_service,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("cinescope")
@@ -201,6 +207,67 @@ def get_feature_importance(limit: int = Query(20, ge=1, le=100)) -> dict[str, An
 def predict(payload: PredictionInput) -> dict[str, Any]:
     _require_dataset()
     return _model_call(model_service.predict, payload.model_dump())
+
+
+@app.post("/api/researcher/explain")
+def explain_prediction(payload: PredictionInput) -> dict[str, Any]:
+    _require_dataset()
+    result = _model_call(researcher_service.explain_prediction, payload.model_dump())
+    verified_evidence = {
+        "predicted_category": result["prediction"]["predicted_category"],
+        "probabilities": result["prediction"]["probabilities"],
+        "feature_effects": result["feature_effects"],
+        "historical_comparison": result["historical_comparison"],
+        "explanation_method": result["explanation_method"],
+    }
+    try:
+        explanation = gemini_service.explain_prediction(verified_evidence)
+    except gemini_service.GeminiRateLimitError:
+        explanation = None
+        gemini_notice = "Gemini rate limit reached. The model result is still available."
+    except gemini_service.GeminiUnavailableError as error:
+        explanation = None
+        gemini_notice = str(error)
+    else:
+        gemini_notice = None
+
+    return {
+        **result,
+        "gemini_explanation": explanation,
+        "gemini_notice": gemini_notice,
+    }
+
+
+@app.post("/api/researcher/chat")
+def researcher_chat(payload: ResearchChatRequest) -> dict[str, Any]:
+    history = [message.model_dump() for message in payload.history]
+    try:
+        if payload.mode == "general":
+            answer = gemini_service.answer_general_question(
+                payload.question, history
+            )
+            return {
+                "mode": payload.mode,
+                "answer": answer,
+                "evidence": None,
+                "notice": "General movie information is not live-verified.",
+            }
+
+        _require_dataset()
+        analysis = researcher_service.analyze_dataset_question(payload.question)
+        answer = gemini_service.explain_dataset_results(
+            payload.question, analysis, history
+        )
+        return {
+            "mode": payload.mode,
+            "answer": answer,
+            "evidence": analysis,
+            "notice": None,
+        }
+    except gemini_service.GeminiRateLimitError as error:
+        raise HTTPException(status_code=429, detail=str(error)) from error
+    except gemini_service.GeminiUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @app.get("/api/movies")

@@ -26,6 +26,8 @@ ASSETS/   Existing notebook and CSV (kept in place)
 
 The API reads the existing CSV once and caches it for the process. Dataset/analytics routes compute from the actual source file. Notebook model-comparison values are preserved as saved notebook evidence. The deployable Random Forest uses 10 movie inputs: director name, runtime, genre, three actor names, budget, release year, language, and country. Facebook-like counts and color are deliberately excluded. The prediction form suggests director and actor names from the dataset as the user types. `backend\app\export_model.py` trains this model and compares it with the previous deployed model on the same held-out movies. Rare names are grouped during training; unseen names are ignored by the fitted encoder. Random splitting can put people in both train and test, so results may overstate generalization to entirely unseen people. Predictions never fit preprocessing on user input and fail explicitly if the artifact is missing.
 
+The Researcher section reuses this saved pipeline for its prediction explainer. Its feature-sensitivity view replaces one input at a time with a dataset median or most-common value and measures the change in the predicted category probability. This is a local model sensitivity check, not additive SHAP and not a causal explanation. Historical comparisons and Dataset Researcher answers are calculated in Python from the CSV; Gemini only writes a separate explanation. The General Movie Assistant does not browse the web, so its answers are not live-verified.
+
 ## Windows setup
 
 Use Python 3.13 (recommended) or Python 3.11+. Keep the existing notebook environment unchanged; use a separate virtual environment for the API.
@@ -66,6 +68,21 @@ npm run dev
 Open the Vite URL printed in the terminal (normally `http://127.0.0.1:5173`). The API is served at `http://127.0.0.1:8000`; interactive API documentation is at `http://127.0.0.1:8000/docs`.
 
 Optional environment settings can be copied from `backend\.env.example` and `frontend\.env.example`. `CINESCOPE_DATASET` and `CINESCOPE_ARTIFACT_DIR` override backend paths; `VITE_API_BASE_URL` sets the frontend API base URL.
+
+### Researcher and Gemini setup
+
+The Researcher page works without Gemini for the Random Forest prediction, probability output, feature sensitivity, and historical dataset comparison. Gemini is only needed for written explanations and chat. The backend uses Google's supported `google-genai` Python SDK and the Gemini text-generation API; the default text model is `gemini-3.5-flash`. General movie answers are not live-verified.
+
+Create a local backend environment file from the placeholder and add your key there. Do not paste the key into frontend settings, source code, chat messages, or Git:
+
+```powershell
+Copy-Item backend\.env.example backend\.env
+notepad backend\.env
+```
+
+Set `GEMINI_API_KEY` in `backend\.env`; the example contains only a placeholder. The `.env` file is excluded by `.gitignore`. `GEMINI_MODEL` can be changed there if your Google AI Studio account does not have access to the default model. Restart the backend after editing the file. If no key is configured or Gemini is unavailable, the ML prediction still works; chat shows an explicit error and the prediction explainer still returns its non-AI evidence.
+
+The current dataset does not record when a field became known. Verify that director, cast, genre, runtime, budget, planned release year, language, and country values were actually available at your chosen prediction date. The Researcher page flags these fields for review; the model and its trained input features have not been changed.
 
 ## Tests and build
 

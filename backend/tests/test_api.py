@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.services import dataset_service, model_service
+from app.services import dataset_service, gemini_service, model_service, researcher_service
 import app.main as main_module
 
 client = TestClient(app)
@@ -195,3 +198,220 @@ def test_prediction_rejects_unknown_feature():
         json={"movie_title": "Not part of model schema"},
     )
     assert response.status_code == 422
+
+
+def test_researcher_explanation_keeps_prediction_when_gemini_is_unavailable(monkeypatch):
+    def unavailable(_evidence):
+        raise gemini_service.GeminiUnavailableError("Gemini is not configured.")
+
+    monkeypatch.setattr(gemini_service, "explain_prediction", unavailable)
+    response = client.post(
+        "/api/researcher/explain",
+        json={
+            "genres": "Drama|Thriller",
+            "country": "USA",
+            "language": "English",
+            "duration": 110,
+            "budget": 25_000_000,
+            "title_year": 2027,
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["prediction"]["predicted_category"] in {"Flop", "Average", "Hit"}
+    assert abs(sum(result["prediction"]["probabilities"].values()) - 1) < 1e-8
+    assert len(result["feature_effects"]) == 10
+    assert result["historical_comparison"]["matched_movies"] > 0
+    assert result["gemini_explanation"] is None
+    assert result["gemini_notice"] == "Gemini is not configured."
+    assert all(item["status"] == "review" for item in result["feature_availability"])
+    assert "does not show causation" in result["explanation_method"]
+
+
+def test_dataset_research_calculates_genre_statistics_from_csv():
+    analysis = researcher_service.analyze_dataset_question(
+        "Which genres have the highest average IMDb score?"
+    )
+    assert analysis["supported"] is True
+    assert analysis["operation"] == "genre_performance"
+    assert analysis["statistics"]
+    assert all(item["movies"] > 0 for item in analysis["statistics"])
+    assert "Cleaned dataset" in analysis["source"]
+    assert analysis["statistics"][0]["mean_imdb_score"] >= analysis["statistics"][-1][
+        "mean_imdb_score"
+    ]
+
+
+def test_dataset_research_uses_python_evidence_for_gemini(monkeypatch):
+    observed = {}
+
+    def explain(question, analysis, history):
+        observed.update(question=question, analysis=analysis, history=history)
+        return "The dataset shows historical patterns, not causes."
+
+    monkeypatch.setattr(gemini_service, "explain_dataset_results", explain)
+    response = client.post(
+        "/api/researcher/chat",
+        json={
+            "mode": "dataset",
+            "question": "Summarize movie budgets.",
+            "history": [{"role": "user", "content": "What is in this dataset?"}],
+        },
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["evidence"]["operation"] == "numeric_summary"
+    assert result["evidence"]["column"] == "budget"
+    assert result["evidence"]["statistics"]["count"] > 0
+    assert observed["analysis"] == result["evidence"]
+    assert observed["history"][0]["role"] == "user"
+    assert result["answer"].startswith("The dataset shows")
+
+
+def test_general_movie_chat_is_labeled_not_live_verified(monkeypatch):
+    monkeypatch.setattr(
+        gemini_service,
+        "answer_general_question",
+        lambda question, history: "A sample general answer.",
+    )
+    response = client.post(
+        "/api/researcher/chat",
+        json={"mode": "general", "question": "Recommend a mystery film."},
+    )
+    assert response.status_code == 200
+    assert response.json()["answer"] == "A sample general answer."
+    assert "not live-verified" in response.json()["notice"]
+    assert response.json()["evidence"] is None
+
+
+def test_researcher_chat_reports_missing_gemini_and_rate_limits(monkeypatch):
+    def unavailable(_question, _history):
+        raise gemini_service.GeminiUnavailableError("Gemini is not configured.")
+
+    monkeypatch.setattr(gemini_service, "answer_general_question", unavailable)
+    unavailable_response = client.post(
+        "/api/researcher/chat",
+        json={"mode": "general", "question": "Tell me about filmmaking."},
+    )
+    assert unavailable_response.status_code == 503
+    assert unavailable_response.json()["detail"] == "Gemini is not configured."
+
+    def rate_limited(_question, _history):
+        raise gemini_service.GeminiRateLimitError("Gemini rate limit reached.")
+
+    monkeypatch.setattr(gemini_service, "answer_general_question", rate_limited)
+    limited_response = client.post(
+        "/api/researcher/chat",
+        json={"mode": "general", "question": "Tell me about filmmaking."},
+    )
+    assert limited_response.status_code == 429
+
+
+def test_researcher_chat_rejects_invalid_mode_and_long_history():
+    invalid_mode = client.post(
+        "/api/researcher/chat",
+        json={"mode": "execute", "question": "Run arbitrary code."},
+    )
+    assert invalid_mode.status_code == 422
+
+    invalid_history = client.post(
+        "/api/researcher/chat",
+        json={
+            "mode": "general",
+            "question": "Question",
+            "history": [
+                {"role": "assistant", "content": "Earlier answer."}
+            ] * 13,
+        },
+    )
+    assert invalid_history.status_code == 422
+
+
+def test_researcher_prediction_rejects_invalid_numeric_input():
+    response = client.post(
+        "/api/researcher/explain",
+        json={"duration": -1},
+    )
+    assert response.status_code == 422
+
+
+def test_gemini_client_uses_text_generation_api(monkeypatch):
+    observed = {}
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            observed.update(kwargs)
+            return SimpleNamespace(text="Verified evidence, explained simply.")
+
+    class FakeClient:
+        models = FakeModels()
+
+    monkeypatch.setattr(gemini_service, "GEMINI_API_KEY", "test-key-not-used")
+    monkeypatch.setattr(gemini_service, "_client", lambda _key: FakeClient())
+    assert gemini_service._generate_text("Test prompt") == "Verified evidence, explained simply."
+    assert observed["contents"] == "Test prompt"
+    assert observed["config"] == {"max_output_tokens": 1024}
+    assert observed["model"] == gemini_service.GEMINI_MODEL
+
+
+def test_gemini_service_handles_missing_key_rate_limit_and_empty_response(monkeypatch):
+    monkeypatch.setattr(gemini_service, "GEMINI_API_KEY", None)
+    monkeypatch.setattr(
+        gemini_service,
+        "_client",
+        lambda _key: (_ for _ in ()).throw(AssertionError("Client should not be created")),
+    )
+    with pytest.raises(gemini_service.GeminiUnavailableError) as error:
+        gemini_service._generate_text("Test prompt")
+    assert str(error.value) == "Gemini is not configured."
+
+    from google.genai.errors import APIError
+
+    monkeypatch.setattr(gemini_service, "GEMINI_API_KEY", "test-key-not-used")
+
+    class RateLimitedModels:
+        def generate_content(self, **_kwargs):
+            raise APIError(429, {"error": {"message": "test"}})
+
+    class RateLimitedClient:
+        models = RateLimitedModels()
+
+    monkeypatch.setattr(gemini_service, "_client", lambda _key: RateLimitedClient())
+    with pytest.raises(gemini_service.GeminiRateLimitError):
+        gemini_service._generate_text("Test prompt")
+
+    class MissingModelModels:
+        def generate_content(self, **_kwargs):
+            raise APIError(404, {"error": {"message": "test"}})
+
+    class MissingModelClient:
+        models = MissingModelModels()
+
+    monkeypatch.setattr(gemini_service, "_client", lambda _key: MissingModelClient())
+    with pytest.raises(gemini_service.GeminiUnavailableError) as error:
+        gemini_service._generate_text("Test prompt")
+    assert str(error.value) == "Gemini is temporarily unavailable."
+
+    class TimedOutModels:
+        def generate_content(self, **_kwargs):
+            raise TimeoutError("test")
+
+    class TimedOutClient:
+        models = TimedOutModels()
+
+    monkeypatch.setattr(gemini_service, "_client", lambda _key: TimedOutClient())
+    with pytest.raises(gemini_service.GeminiUnavailableError) as error:
+        gemini_service._generate_text("Test prompt")
+    assert str(error.value) == "Gemini request timed out or could not connect."
+
+    class EmptyModels:
+        def generate_content(self, **_kwargs):
+            return SimpleNamespace(text="")
+
+    class EmptyClient:
+        models = EmptyModels()
+
+    monkeypatch.setattr(gemini_service, "_client", lambda _key: EmptyClient())
+    with pytest.raises(gemini_service.GeminiUnavailableError) as error:
+        gemini_service._generate_text("Test prompt")
+    assert str(error.value) == "Gemini returned an empty response."

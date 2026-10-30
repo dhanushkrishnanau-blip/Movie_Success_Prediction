@@ -10,6 +10,7 @@ import {
   Microscope,
   Palette,
   SlidersHorizontal,
+  Sparkles,
   X,
 } from "lucide-react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -23,12 +24,14 @@ const ModelPage = lazy(() => import("../pages/ModelPage").then((module) => ({ de
 const MoviesPage = lazy(() => import("../pages/MoviesPage").then((module) => ({ default: module.MoviesPage })));
 const OverviewPage = lazy(() => import("../pages/OverviewPage").then((module) => ({ default: module.OverviewPage })));
 const PredictPage = lazy(() => import("../pages/PredictPage").then((module) => ({ default: module.PredictPage })));
+const ResearcherPage = lazy(() => import("../pages/ResearcherPage").then((module) => ({ default: module.ResearcherPage })));
 
 const navigation = [
   { to: "/", label: "Overview", icon: Compass, end: true },
   { to: "/dataset", label: "Dataset", icon: Database },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/predict", label: "Prediction studio", icon: SlidersHorizontal },
+  { to: "/researcher", label: "Researcher", icon: Sparkles },
   { to: "/models", label: "Model lab", icon: Microscope },
   { to: "/movies", label: "Movie explorer", icon: Film },
   { to: "/methodology", label: "Methodology", icon: Activity },
@@ -108,6 +111,7 @@ export default function App() {
               <Route path="/dataset" element={<DatasetPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/predict" element={<PredictPage />} />
+              <Route path="/researcher" element={<ResearcherPage />} />
               <Route path="/models" element={<ModelPage />} />
               <Route path="/movies" element={<MoviesPage />} />
               <Route path="/methodology" element={<MethodologyPage />} />

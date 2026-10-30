@@ -7,6 +7,10 @@ import type {
   ModelResult,
   MovieRecord,
   Overview,
+  PredictionExplanation,
+  ResearchChatMessage,
+  ResearchChatMode,
+  ResearchChatResponse,
   ScoreDistribution,
 } from "../types";
 
@@ -83,6 +87,20 @@ export const api = {
       probabilities: Record<string, number> | null;
       note: string;
     }>("/predict", { method: "POST", body: JSON.stringify(features) }),
+  explainPrediction: (features: Record<string, string | number | null>) =>
+    request<PredictionExplanation>("/researcher/explain", {
+      method: "POST",
+      body: JSON.stringify(features),
+    }),
+  researcherChat: (
+    mode: ResearchChatMode,
+    question: string,
+    history: ResearchChatMessage[],
+  ) =>
+    request<ResearchChatResponse>("/researcher/chat", {
+      method: "POST",
+      body: JSON.stringify({ mode, question, history }),
+    }),
   downloadDataset: async () => {
     let response: Response;
     try {
