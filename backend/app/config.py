@@ -14,6 +14,16 @@ def _configured_path(variable: str, default: Path) -> Path:
     return path if path.is_absolute() else BACKEND_DIR / path
 
 
+def _positive_int_setting(name: str, default: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer.") from error
+    if value < 1:
+        raise ValueError(f"{name} must be a positive integer.")
+    return value
+
+
 DATASET_PATH = _configured_path(
     "CINESCOPE_DATASET", ROOT_DIR / "ASSETS" / "movie_metadata.csv"
 )
@@ -22,3 +32,4 @@ MODEL_PATH = ARTIFACT_DIR / "random_forest_pipeline.joblib"
 MODEL_METADATA_PATH = ARTIFACT_DIR / "model_metadata.json"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+MIN_GENRE_MOVIES = _positive_int_setting("CINESCOPE_MIN_GENRE_MOVIES", 20)

@@ -123,3 +123,21 @@ export interface ResearchChatResponse {
   evidence: Record<string, unknown> | null;
   notice: string | null;
 }
+
+export interface GenrePerformanceEvidence {
+  supported: boolean;
+  operation: "genre_performance";
+  statistics: Array<{
+    rank: number;
+    genre: string;
+    movies: number;
+    mean_imdb_score: number;
+    median_imdb_score: number;
+  }>;
+  minimum_movies_per_genre: number;
+  excluded_genres_below_minimum: number;
+  eligible_genres: number;
+  requested_count: number;
+  message: string | null;
+  source: string;
+}

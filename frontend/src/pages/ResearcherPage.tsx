@@ -10,6 +10,7 @@ import {
 import { api } from "../services/api";
 import { PageHeader, Panel } from "../components/States";
 import type {
+  GenrePerformanceEvidence,
   PredictionExplanation,
   ResearchChatMessage,
   ResearchChatMode,
@@ -40,6 +41,31 @@ const emptyChats: Record<ResearchChatMode, ChatEntry[]> = {
 
 function formatValue(value: string | number | null): string {
   return value === null ? "Missing (pipeline imputation used)" : String(value);
+}
+
+function isGenrePerformanceEvidence(
+  evidence: Record<string, unknown>,
+): evidence is Record<string, unknown> & GenrePerformanceEvidence {
+  return evidence.operation === "genre_performance"
+    && evidence.supported === true
+    && Array.isArray(evidence.statistics)
+    && evidence.statistics.every((item) =>
+      typeof item === "object"
+      && item !== null
+      && "genre" in item
+      && typeof item.genre === "string"
+      && "movies" in item
+      && typeof item.movies === "number"
+      && "mean_imdb_score" in item
+      && typeof item.mean_imdb_score === "number"
+      && "median_imdb_score" in item
+      && typeof item.median_imdb_score === "number")
+    && typeof evidence.minimum_movies_per_genre === "number"
+    && typeof evidence.excluded_genres_below_minimum === "number"
+    && typeof evidence.eligible_genres === "number"
+    && typeof evidence.requested_count === "number"
+    && (typeof evidence.message === "string" || evidence.message === null)
+    && typeof evidence.source === "string";
 }
 
 function NameField({
@@ -338,7 +364,35 @@ export function ResearcherPage() {
             {entry.notice && <small>{entry.notice}</small>}
             {entry.evidence && <details>
               <summary>Show Python-calculated evidence</summary>
-              <pre>{JSON.stringify(entry.evidence, null, 2)}</pre>
+              {isGenrePerformanceEvidence(entry.evidence)
+                ? <>
+                  <p className="fine-print">{entry.evidence.source}</p>
+                  {entry.evidence.message && <p className="fine-print">
+                    {entry.evidence.message}
+                  </p>}
+                  {entry.evidence.excluded_genres_below_minimum > 0
+                    && <p className="fine-print">
+                      {entry.evidence.excluded_genres_below_minimum} genres with fewer than{" "}
+                      {entry.evidence.minimum_movies_per_genre} scored movies were excluded.
+                    </p>}
+                  <div className="table-scroll">
+                    <table className="research-table">
+                      <thead><tr>
+                        <th>Rank</th>
+                        <th>Genre</th>
+                        <th>Average IMDb score</th>
+                        <th>Movies</th>
+                      </tr></thead>
+                      <tbody>{entry.evidence.statistics.map((item) => <tr key={item.genre}>
+                        <td>{item.rank}</td>
+                        <th>{item.genre}</th>
+                        <td>{item.mean_imdb_score.toFixed(2)}</td>
+                        <td>{item.movies.toLocaleString()}</td>
+                      </tr>)}</tbody>
+                    </table>
+                  </div>
+                </>
+                : <pre>{JSON.stringify(entry.evidence, null, 2)}</pre>}
             </details>}
           </article>)}
           {sending && <div className="state-box" role="status"><LoaderCircle className="spin" size={18} />Gemini is preparing a response…</div>}

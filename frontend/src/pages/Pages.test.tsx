@@ -75,8 +75,26 @@ vi.mock("../services/api", () => ({
     }),
     researcherChat: vi.fn().mockImplementation(async (mode: "general" | "dataset") => ({
       mode,
-      answer: mode === "general" ? "A sample movie answer." : "These are historical dataset results.",
-      evidence: mode === "dataset" ? { operation: "genre_performance", supported: true } : null,
+      answer: mode === "general"
+        ? "A sample movie answer."
+        : "Film-Noir, News, and Documentary lead.",
+      evidence: mode === "dataset" ? {
+        operation: "genre_performance",
+        supported: true,
+        statistics: [
+          { rank: 1, genre: "Documentary", movies: 121, mean_imdb_score: 7.18, median_imdb_score: 7.4 },
+          { rank: 2, genre: "Biography", movies: 292, mean_imdb_score: 7.15, median_imdb_score: 7.2 },
+          { rank: 3, genre: "History", movies: 205, mean_imdb_score: 7.08, median_imdb_score: 7.2 },
+          { rank: 4, genre: "War", movies: 211, mean_imdb_score: 7.07, median_imdb_score: 7.1 },
+          { rank: 5, genre: "Drama", movies: 2571, mean_imdb_score: 6.76, median_imdb_score: 6.9 },
+        ],
+        minimum_movies_per_genre: 20,
+        excluded_genres_below_minimum: 5,
+        eligible_genres: 21,
+        requested_count: 5,
+        message: null,
+        source: "Cleaned dataset; missing genres and IMDb scores are excluded.",
+      } : null,
       notice: mode === "general" ? "General movie information is not live-verified." : null,
     })),
     schema: vi.fn().mockResolvedValue({
@@ -204,15 +222,21 @@ describe("CineScope overview", () => {
     expect(screen.queryByText("A sample movie answer.")).not.toBeInTheDocument();
   });
 
-  it("shows Python evidence in Dataset Researcher chat", async () => {
+  it("shows all Python-calculated genre results even if Gemini mentions only three", async () => {
     const user = userEvent.setup();
     render(<MemoryRouter><ResearcherPage /></MemoryRouter>);
     await user.click(screen.getByRole("tab", { name: "AI Movie Research Assistant" }));
     await user.click(screen.getByRole("button", { name: "Dataset Researcher" }));
-    await user.type(screen.getByLabelText("Your question"), "Which genres score highest?");
+    await user.type(
+      screen.getByLabelText("Your question"),
+      "Show Python-calculated evidence for the top 5 genres by average IMDb score.",
+    );
     await user.click(screen.getByRole("button", { name: /Send/ }));
-    expect(await screen.findByText("These are historical dataset results.")).toBeInTheDocument();
+    expect(await screen.findByText("Film-Noir, News, and Documentary lead.")).toBeInTheDocument();
     await user.click(screen.getByText("Show Python-calculated evidence"));
-    expect(screen.getByText(/genre_performance/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Rank" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Average IMDb score" })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: "3 History 7.08 205" })).toBeInTheDocument();
+    expect(screen.getAllByRole("row")).toHaveLength(6);
   });
 });

@@ -255,14 +255,22 @@ def researcher_chat(payload: ResearchChatRequest) -> dict[str, Any]:
 
         _require_dataset()
         analysis = researcher_service.analyze_dataset_question(payload.question)
-        answer = gemini_service.explain_dataset_results(
-            payload.question, analysis, history
-        )
+        try:
+            answer = gemini_service.explain_dataset_results(
+                payload.question, analysis, history
+            )
+            notice = None
+        except gemini_service.GeminiRateLimitError as error:
+            answer = "Gemini could not explain the results; the Python evidence is available below."
+            notice = str(error)
+        except gemini_service.GeminiUnavailableError as error:
+            answer = "Gemini could not explain the results; the Python evidence is available below."
+            notice = str(error)
         return {
             "mode": payload.mode,
             "answer": answer,
             "evidence": analysis,
-            "notice": None,
+            "notice": notice,
         }
     except gemini_service.GeminiRateLimitError as error:
         raise HTTPException(status_code=429, detail=str(error)) from error

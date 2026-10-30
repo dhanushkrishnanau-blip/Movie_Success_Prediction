@@ -1,8 +1,10 @@
 from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from app import config
 from app.main import app
 from app.services import dataset_service, gemini_service, model_service, researcher_service
 import app.main as main_module
@@ -230,16 +232,192 @@ def test_researcher_explanation_keeps_prediction_when_gemini_is_unavailable(monk
 
 def test_dataset_research_calculates_genre_statistics_from_csv():
     analysis = researcher_service.analyze_dataset_question(
-        "Which genres have the highest average IMDb score?"
+        "Show Python-calculated evidence for the top 5 genres by average IMDb score, "
+        "including the number of movies in each genre."
     )
     assert analysis["supported"] is True
     assert analysis["operation"] == "genre_performance"
-    assert analysis["statistics"]
-    assert all(item["movies"] > 0 for item in analysis["statistics"])
+    assert len(analysis["statistics"]) == 5
+    assert analysis["minimum_movies_per_genre"] == 20
+    assert analysis["eligible_genres"] >= 5
+    assert analysis["message"] is None
+    assert all(item["movies"] >= analysis["minimum_movies_per_genre"] for item in analysis["statistics"])
     assert "Cleaned dataset" in analysis["source"]
-    assert analysis["statistics"][0]["mean_imdb_score"] >= analysis["statistics"][-1][
-        "mean_imdb_score"
+    assert [item["mean_imdb_score"] for item in analysis["statistics"]] == sorted(
+        (item["mean_imdb_score"] for item in analysis["statistics"]), reverse=True
+    )
+    assert all(
+        len(f"{item['mean_imdb_score']:.2f}".split(".")[1]) == 2
+        for item in analysis["statistics"]
+    )
+    assert [item["rank"] for item in analysis["statistics"]] == [1, 2, 3, 4, 5]
+    assert [item["genre"] for item in analysis["statistics"]] == [
+        "Documentary",
+        "Biography",
+        "History",
+        "War",
+        "Drama",
     ]
+    assert [
+        (item["mean_imdb_score"], item["movies"])
+        for item in analysis["statistics"]
+    ] == [
+        (7.18, 121),
+        (7.15, 292),
+        (7.08, 205),
+        (7.07, 211),
+        (6.76, 2571),
+    ]
+
+
+def test_genre_analysis_splits_genres_and_excludes_missing_values(monkeypatch):
+    monkeypatch.setattr(researcher_service, "MIN_GENRE_MOVIES", 3)
+    frame = pd.DataFrame(
+        {
+            "genres": [
+                "Drama|Comedy",
+                "Drama|Comedy",
+                "Drama|Comedy",
+                "Small sample",
+                "Small sample",
+                None,
+                "Missing score",
+            ],
+            "imdb_score": [8.0, 6.0, 7.0, 9.0, 9.0, 10.0, None],
+        }
+    )
+
+    analysis = researcher_service._genre_analysis(
+        frame, "top 5 genres by average imdb score"
+    )
+
+    assert analysis["supported"] is True
+    assert analysis["minimum_movies_per_genre"] == 3
+    assert analysis["excluded_genres_below_minimum"] == 1
+    assert analysis["statistics"] == [
+        {
+            "rank": 1,
+            "genre": "Comedy",
+            "movies": 3,
+            "mean_imdb_score": 7.0,
+            "median_imdb_score": 7.0,
+        },
+        {
+            "rank": 2,
+            "genre": "Drama",
+            "movies": 3,
+            "mean_imdb_score": 7.0,
+            "median_imdb_score": 7.0,
+        },
+    ]
+
+
+def test_genre_analysis_returns_all_eligible_groups_when_less_than_five(monkeypatch):
+    monkeypatch.setattr(researcher_service, "MIN_GENRE_MOVIES", 3)
+    frame = pd.DataFrame(
+        {
+            "genres": ["Drama|Comedy"] * 3 + ["Action"] * 3 + ["Tiny"] * 2,
+            "imdb_score": [7.0, 8.0, 9.0, 6.0, 7.0, 8.0, 10.0, 10.0],
+        }
+    )
+
+    analysis = researcher_service._genre_analysis(
+        frame, "top 5 genres by average imdb score"
+    )
+
+    assert analysis["supported"] is True
+    assert len(analysis["statistics"]) == 3
+    assert analysis["eligible_genres"] == 3
+    assert analysis["requested_count"] == 5
+    assert analysis["message"] == (
+        "Only 3 genre(s) met the minimum of 3 movies; all eligible genres are shown."
+    )
+    assert {item["genre"] for item in analysis["statistics"]} == {
+        "Drama",
+        "Comedy",
+        "Action",
+    }
+
+
+def test_genre_minimum_is_configurable_and_validated(monkeypatch):
+    monkeypatch.setenv("CINESCOPE_MIN_GENRE_MOVIES", "35")
+    assert config._positive_int_setting("CINESCOPE_MIN_GENRE_MOVIES", 20) == 35
+    monkeypatch.setenv("CINESCOPE_MIN_GENRE_MOVIES", "0")
+    with pytest.raises(ValueError, match="positive integer"):
+        config._positive_int_setting("CINESCOPE_MIN_GENRE_MOVIES", 20)
+
+
+@pytest.mark.parametrize(
+    "columns, missing_name",
+    [
+        ({"imdb_score": [7.0]}, "genres"),
+        ({"genres": ["Drama"]}, "imdb_score"),
+    ],
+)
+def test_genre_analysis_reports_missing_required_columns(
+    monkeypatch, columns, missing_name
+):
+    monkeypatch.setattr(
+        dataset_service,
+        "get_raw_dataset",
+        lambda: pd.DataFrame(columns),
+    )
+
+    analysis = researcher_service.analyze_dataset_question("top genres by score")
+
+    assert analysis["supported"] is False
+    assert missing_name in analysis["message"]
+
+
+def test_genre_results_are_passed_to_gemini_and_returned_as_python_evidence(monkeypatch):
+    observed = {}
+    question = (
+        "Show Python-calculated evidence for the top 5 genres by average IMDb score, "
+        "including the number of movies in each genre."
+    )
+
+    def explain(received_question, analysis, history):
+        observed.update(question=received_question, analysis=analysis, history=history)
+        return "Film-Noir, News, and Documentary lead."
+
+    monkeypatch.setattr(gemini_service, "explain_dataset_results", explain)
+    response = client.post(
+        "/api/researcher/chat",
+        json={"mode": "dataset", "question": question},
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["evidence"]["statistics"]) == 5
+    assert all(
+        isinstance(item["rank"], int)
+        and isinstance(item["mean_imdb_score"], float)
+        and isinstance(item["movies"], int)
+        for item in result["evidence"]["statistics"]
+    )
+    assert observed["analysis"] == result["evidence"]
+    assert len(observed["analysis"]["statistics"]) == 5
+    assert result["answer"] == "Film-Noir, News, and Documentary lead."
+
+
+def test_genre_evidence_is_returned_when_gemini_is_unavailable(monkeypatch):
+    def unavailable(_question, _analysis, _history):
+        raise gemini_service.GeminiUnavailableError("Gemini is temporarily unavailable.")
+
+    monkeypatch.setattr(gemini_service, "explain_dataset_results", unavailable)
+    response = client.post(
+        "/api/researcher/chat",
+        json={
+            "mode": "dataset",
+            "question": "Show the top 5 genres by average IMDb score.",
+        },
+    )
+
+    assert response.status_code == 200
+    result = response.json()
+    assert len(result["evidence"]["statistics"]) == 5
+    assert "Python evidence is available below" in result["answer"]
+    assert result["notice"] == "Gemini is temporarily unavailable."
 
 
 def test_dataset_research_uses_python_evidence_for_gemini(monkeypatch):

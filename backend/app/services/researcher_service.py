@@ -3,6 +3,7 @@ from typing import Any
 
 import pandas as pd
 
+from app.config import MIN_GENRE_MOVIES
 from app.services import analytics_service, dataset_service, model_service
 
 FEATURE_AVAILABILITY = [
@@ -42,6 +43,18 @@ FEATURE_AVAILABILITY = [
         "note": "Confirm the relevant language and country definitions and that they are known at prediction time.",
     },
 ]
+TOP_COUNT_WORDS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
 
 def explain_prediction(features: dict[str, Any]) -> dict[str, Any]:
     prediction = model_service.predict(features)
@@ -179,12 +192,19 @@ def historical_comparison(features: dict[str, Any]) -> dict[str, Any]:
 
 
 def analyze_dataset_question(question: str) -> dict[str, Any]:
-    clean = dataset_service.get_clean_dataset()
     raw = dataset_service.get_raw_dataset()
     normalized = question.casefold()
     if "genre" in normalized:
+        missing_columns = {"genres", "imdb_score"} - set(raw.columns)
+        if missing_columns:
+            missing = ", ".join(sorted(missing_columns))
+            return _not_enough(
+                f"The dataset is missing required genre-analysis column(s): {missing}."
+            )
+        clean = dataset_service.get_clean_dataset()
         return _genre_analysis(clean, normalized)
 
+    clean = dataset_service.get_clean_dataset()
     if "director" in normalized:
         return _group_analysis(clean, "director_name", normalized)
 
@@ -264,13 +284,21 @@ def analyze_dataset_question(question: str) -> dict[str, Any]:
 
 
 def _genre_analysis(frame: pd.DataFrame, question: str) -> dict[str, Any]:
-    expanded = frame[["genres", "imdb_score", "Classify"]].dropna(
-        subset=["genres"]
-    ).copy()
+    missing_columns = {"genres", "imdb_score"} - set(frame.columns)
+    if missing_columns:
+        missing = ", ".join(sorted(missing_columns))
+        return _not_enough(
+            f"The dataset is missing required genre-analysis column(s): {missing}."
+        )
+
+    expanded = frame[["genres", "imdb_score"]].copy()
+    expanded["imdb_score"] = pd.to_numeric(expanded["imdb_score"], errors="coerce")
+    expanded = expanded.dropna(subset=["genres", "imdb_score"])
     expanded["genre"] = expanded["genres"].astype(str).str.split("|")
     expanded = expanded.explode("genre")
     expanded["genre"] = expanded["genre"].astype(str).str.strip()
-    available = sorted(expanded["genre"].dropna().unique())
+    expanded = expanded[expanded["genre"].ne("")]
+    available = sorted(expanded["genre"].unique())
     matched = [
         genre
         for genre in available
@@ -278,11 +306,15 @@ def _genre_analysis(frame: pd.DataFrame, question: str) -> dict[str, Any]:
     ]
     if matched:
         expanded = expanded[expanded["genre"].isin(matched)]
+
     grouped = expanded.groupby("genre").agg(
         movies=("imdb_score", "size"),
         mean_imdb_score=("imdb_score", "mean"),
         median_imdb_score=("imdb_score", "median"),
     )
+    excluded_genres = int((grouped["movies"] < MIN_GENRE_MOVIES).sum())
+    grouped = grouped[grouped["movies"] >= MIN_GENRE_MOVIES]
+
     if any(term in question for term in ("score", "rating", "average", "highest", "best")):
         grouped = grouped.sort_values(
             ["mean_imdb_score", "movies"], ascending=[False, False]
@@ -291,22 +323,61 @@ def _genre_analysis(frame: pd.DataFrame, question: str) -> dict[str, Any]:
         grouped = grouped.sort_values(
             ["movies", "mean_imdb_score"], ascending=[False, False]
         )
+
+    requested_count = re.search(
+        r"\btop\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b",
+        question,
+    )
+    limit = (
+        min(
+            int(requested_count.group(1))
+            if requested_count.group(1).isdigit()
+            else TOP_COUNT_WORDS[requested_count.group(1)],
+            25,
+        )
+        if requested_count
+        else 5
+    )
+    eligible_count = len(grouped)
+    if eligible_count < limit:
+        if eligible_count:
+            result_message = (
+                f"Only {eligible_count} genre(s) met the minimum of "
+                f"{MIN_GENRE_MOVIES} movies; all eligible genres are shown."
+            )
+        else:
+            result_message = (
+                f"No genre met the minimum of {MIN_GENRE_MOVIES} movies; "
+                "no ranked results are available. Lower "
+                "CINESCOPE_MIN_GENRE_MOVIES to include smaller samples."
+            )
+    else:
+        result_message = None
+
     stats = [
         {
+            "rank": rank,
             "genre": str(genre),
             "movies": int(row["movies"]),
             "mean_imdb_score": round(float(row["mean_imdb_score"]), 2),
             "median_imdb_score": round(float(row["median_imdb_score"]), 2),
         }
-        for genre, row in grouped.head(15).iterrows()
+        for rank, (genre, row) in enumerate(grouped.head(limit).iterrows(), start=1)
     ]
-    if not stats:
-        return _not_enough("No matching genre rows were found.")
     return {
         "supported": True,
         "operation": "genre_performance",
         "statistics": stats,
-        "source": "Cleaned dataset; a movie may count under each listed genre.",
+        "minimum_movies_per_genre": MIN_GENRE_MOVIES,
+        "excluded_genres_below_minimum": excluded_genres,
+        "eligible_genres": eligible_count,
+        "requested_count": limit,
+        "message": result_message,
+        "source": (
+            "Cleaned dataset; missing genres and IMDb scores are excluded; a movie "
+            "may count under each listed genre. Each reported genre has at least "
+            f"{MIN_GENRE_MOVIES} scored movies."
+        ),
     }
 
 
